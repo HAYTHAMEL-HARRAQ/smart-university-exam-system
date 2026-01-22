@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>University Exam System - Exams</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+        }
+        
+        nav {
+            background-color: #34495e;
+            padding: 15px 0;
+            text-align: center;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover {
+            background-color: #2c3e50;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .exam-list {
+            margin: 20px 0;
+        }
+        
+        .exam-item {
+            background-color: #ecf0f1;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .exam-title {
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .exam-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: #27ae60;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #219653;
+        }
+        
+        .btn-take {
+            background-color: #3498db;
+        }
+        
+        .btn-take:hover {
+            background-color: #2980b9;
+        }
+        
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>University Exam System</h1>
+        <p>Take Your Exams Online</p>
+    </header>
+    
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="exams.html">Exams</a>
+        <a href="results.html">Results</a>
+        <a href="profile.html">Profile</a>
+        <a href="contact.html">Contact</a>
+    </nav>
+    
+    <div class="container">
+        <h2>Available Exams</h2>
+        <p>Below are the exams you're enrolled in. Click "Take Exam" to start your test.</p>
+        
+        <div class="exam-list">
+            <div class="exam-item">
+                <div class="exam-title">Computer Science Fundamentals</div>
+                <div class="exam-info">
+                    <span><strong>Date:</strong> January 15, 2026</span>
+                    <span><strong>Duration:</strong> 90 minutes</span>
+                    <span><strong>Questions:</strong> 50</span>
+                </div>
+                <p>This exam covers basic programming concepts, algorithms, and data structures.</p>
+                <a href="#" class="btn btn-take">Take Exam</a>
+                <a href="#" class="btn">View Details</a>
+            </div>
+            
+            <div class="exam-item">
+                <div class="exam-title">Mathematics for Engineers</div>
+                <div class="exam-info">
+                    <span><strong>Date:</strong> January 18, 2026</span>
+                    <span><strong>Duration:</strong> 120 minutes</span>
+                    <span><strong>Questions:</strong> 40</span>
+                </div>
+                <p>Advanced calculus, linear algebra, and differential equations.</p>
+                <a href="#" class="btn btn-take">Take Exam</a>
+                <a href="#" class="btn">View Details</a>
+            </div>
+            
+            <div class="exam-item">
+                <div class="exam-title">Database Management Systems</div>
+                <div class="exam-info">
+                    <span><strong>Date:</strong> January 22, 2026</span>
+                    <span><strong>Duration:</strong> 75 minutes</span>
+                    <span><strong>Questions:</strong> 35</span>
+                </div>
+                <p>Relational databases, SQL, normalization, and transaction management.</p>
+                <a href="#" class="btn btn-take">Take Exam</a>
+                <a href="#" class="btn">View Details</a>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>University Exam System &copy; 2026 - All Rights Reserved</p>
+    </footer>
+</body>
+</html>

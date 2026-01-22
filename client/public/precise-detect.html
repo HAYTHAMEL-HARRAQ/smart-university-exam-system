@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Precise Phone Detection</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .video-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 15px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        video {
+            width: 640px;
+            height: 480px;
+            background: #000;
+            transform: scaleX(-1);
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        .control-panel {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 0 10px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+        button:disabled {
+            background: #666;
+            transform: none;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4ade80;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .alerts-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .alert-item {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .detection-box {
+            position: absolute;
+            border: 3px solid #10b981;
+            background: rgba(16, 185, 129, 0.15);
+            pointer-events: none;
+        }
+        .box-header {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            background: #10b981;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .debug-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .threshold-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .threshold-control label {
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; font-size: 2.5em; margin-bottom: 10px;">🎯 PRECISE PHONE DETECTOR</h1>
+        <p style="text-align: center; opacity: 0.9; margin-bottom: 25px;">
+            Advanced detection that only identifies REAL phones based on shape and size
+        </p>
+        
+        <div class="threshold-control">
+            <label for="sensitivity">Detection Sensitivity:</label>
+            <input type="range" id="sensitivity" min="1" max="10" value="5">
+            <span id="sensitivity-value">5</span>
+        </div>
+        
+        <div class="video-wrapper">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
+        </div>
+        
+        <div class="control-panel">
+            <button id="startBtn">START PRECISE DETECTION</button>
+            <button id="stopBtn" disabled>STOP DETECTION</button>
+            <button id="clearBtn">CLEAR LOGS</button>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="phoneCount">0</div>
+                <div class="stat-label">PHONES FOUND</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="accuracy">0%</div>
+                <div class="stat-label">ACCURACY</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="falsePos">0</div>
+                <div class="stat-label">FALSE POSITIVES</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="processing">0ms</div>
+                <div class="stat-label">PROCESSING TIME</div>
+            </div>
+        </div>
+        
+        <div class="alerts-panel" id="alerts">
+            <div style="text-align: center; opacity: 0.7; padding: 30px;">
+                <div style="font-size: 3em; margin-bottom: 15px;">📱</div>
+                <p>No phone detections yet.<br>Show a real phone to the camera.</p>
+            </div>
+        </div>
+        
+        <div class="debug-info" id="debug">
+            Debug info will appear here...
+        </div>
+    </div>
+
+    <script>
+        class PrecisePhoneDetector {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.overlay = document.getElementById('overlay');
+                this.ctx = this.overlay.getContext('2d');
+                this.stream = null;
+                this.isRunning = false;
+                this.interval = null;
+                this.phoneCount = 0;
+                this.falsePositives = 0;
+                this.detections = [];
+                this.startTime = 0;
+                
+                // Phone characteristics (typical dimensions)
+                this.PHONE_MIN_WIDTH = 40;
+                this.PHONE_MAX_WIDTH = 120;
+                this.PHONE_MIN_HEIGHT = 70;
+                this.PHONE_MAX_HEIGHT = 200;
+                this.PHONE_ASPECT_RATIO = 0.5; // width/height (phones are taller than wide)
+                this.ASPECT_TOLERANCE = 0.3;
+                
+                this.setupEvents();
+            }
+            
+            setupEvents() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearLogs());
+                
+                const sensitivitySlider = document.getElementById('sensitivity');
+                const sensitivityValue = document.getElementById('sensitivity-value');
+                
+                sensitivitySlider.addEventListener('input', (e) => {
+                    sensitivityValue.textContent = e.target.value;
+                    this.updateSensitivity(parseInt(e.target.value));
+                });
+            }
+            
+            updateSensitivity(value) {
+                // Map slider value (1-10) to actual thresholds
+                const baseThreshold = 180;
+                this.brightnessThreshold = baseThreshold + (value - 5) * 5; // 155 to 205
+                console.log(`Sensitivity set to ${value}, brightness threshold: ${this.brightnessThreshold}`);
+            }
+            
+            async start() {
+                try {
+                    console.log('🚀 Starting precise phone detection...');
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            width: { ideal: 1280 }, 
+                            height: { ideal: 720 },
+                            facingMode: 'user'
+                        },
+                        audio: false
+                    });
+                    
+                    this.stream = stream;
+                    this.video.srcObject = stream;
+                    this.brightnessThreshold = 180; // Default
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.overlay.width = this.video.videoWidth;
+                        this.overlay.height = this.video.videoHeight;
+                        this.enableButtons(true);
+                        this.startDetection();
+                    };
+                    
+                } catch (error) {
+                    console.error('Camera error:', error);
+                    this.addAlert(`Camera Error: ${error.message}`, 'error');
+                }
+            }
+            
+            stop() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
+                this.stopDetection();
+                this.enableButtons(false);
+            }
+            
+            enableButtons(started) {
+                document.getElementById('startBtn').disabled = started;
+                document.getElementById('stopBtn').disabled = !started;
+            }
+            
+            startDetection() {
+                this.isRunning = true;
+                this.startTime = performance.now();
+                console.log('🔍 Precise detection active');
+                
+                this.interval = setInterval(() => {
+                    this.analyzeFrame();
+                }, 300); // Every 300ms for stability
+            }
+            
+            stopDetection() {
+                this.isRunning = false;
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+                this.clearOverlay();
+                console.log('⏹️ Detection stopped');
+            }
+            
+            analyzeFrame() {
+                if (!this.video || this.video.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
+                    return;
+                }
+                
+                const frameStart = performance.now();
+                this.clearOverlay();
+                
+                // Capture frame
+                this.ctx.drawImage(this.video, 0, 0, this.overlay.width, this.overlay.height);
+                const imageData = this.ctx.getImageData(0, 0, this.overlay.width, this.overlay.height);
+                
+                // Find potential phone regions
+                const candidates = this.findPhoneCandidates(imageData);
+                
+                // Validate candidates based on phone characteristics
+                const validPhones = this.validatePhoneCandidates(candidates);
+                
+                // Process confirmed phones
+                this.processValidPhones(validPhones);
+                
+                // Update debug info
+                const processingTime = performance.now() - frameStart;
+                this.updateDebugInfo(candidates.length, validPhones.length, processingTime);
+            }
+            
+            findPhoneCandidates(imageData) {
+                const candidates = [];
+                const data = imageData.data;
+                const width = imageData.width;
+                const height = imageData.height;
+                
+                // Scan in larger blocks for efficiency
+                const blockSize = 25;
+                
+                for (let y = 0; y < height - blockSize; y += blockSize) {
+                    for (let x = 0; x < width - blockSize; x += blockSize) {
+                        const stats = this.analyzeBlock(data, width, x, y, blockSize);
+                        
+                        // Initial filtering based on brightness
+                        if (stats.avgBrightness > this.brightnessThreshold && 
+                            stats.brightRatio > 0.3) {
+                            candidates.push({
+                                x: x,
+                                y: y,
+                                width: blockSize,
+                                height: blockSize,
+                                brightness: stats.avgBrightness,
+                                confidence: Math.round(stats.brightRatio * 100)
+                            });
+                        }
+                    }
+                }
+                
+                return candidates;
+            }
+            
+            analyzeBlock(data, width, startX, startY, size) {
+                let totalBrightness = 0;
+                let brightPixels = 0;
+                let totalPixels = 0;
+                
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        const px = startX + x;
+                        const py = startY + y;
+                        if (px >= width || py >= imageData.height) continue;
+                        
+                        const index = (py * width + px) * 4;
+                        const r = data[index];
+                        const g = data[index + 1];
+                        const b = data[index + 2];
+                        const brightness = (r + g + b) / 3;
+                        
+                        totalBrightness += brightness;
+                        if (brightness > this.brightnessThreshold) {
+                            brightPixels++;
+                        }
+                        totalPixels++;
+                    }
+                }
+                
+                return {
+                    avgBrightness: totalBrightness / totalPixels,
+                    brightRatio: brightPixels / totalPixels
+                };
+            }
+            
+            validatePhoneCandidates(candidates) {
+                const validPhones = [];
+                
+                // Merge overlapping candidates
+                const merged = this.mergeOverlapping(candidates);
+                
+                // Validate each merged region
+                merged.forEach(region => {
+                    if (this.isValidPhoneShape(region)) {
+                        validPhones.push(region);
+                    }
+                });
+                
+                return validPhones;
+            }
+            
+            mergeOverlapping(candidates) {
+                const merged = [];
+                const processed = new Set();
+                
+                for (let i = 0; i < candidates.length; i++) {
+                    if (processed.has(i)) continue;
+                    
+                    let current = {...candidates[i]};
+                    processed.add(i);
+                    
+                    // Find and merge overlapping regions
+                    for (let j = i + 1; j < candidates.length; j++) {
+                        if (processed.has(j)) continue;
+                        
+                        if (this.overlaps(current, candidates[j])) {
+                            current = this.mergeRegions(current, candidates[j]);
+                            processed.add(j);
+                        }
+                    }
+                    
+                    // Only keep if reasonable size
+                    if (current.width >= 20 && current.height >= 30) {
+                        merged.push(current);
+                    }
+                }
+                
+                return merged;
+            }
+            
+            overlaps(a, b) {
+                return !(a.x + a.width < b.x || b.x + b.width < a.x ||
+                         a.y + a.height < b.y || b.y + b.height < a.y);
+            }
+            
+            mergeRegions(a, b) {
+                const x = Math.min(a.x, b.x);
+                const y = Math.min(a.y, b.y);
+                const maxX = Math.max(a.x + a.width, b.x + b.width);
+                const maxY = Math.max(a.y + a.height, b.y + b.height);
+                
+                return {
+                    x: x,
+                    y: y,
+                    width: maxX - x,
+                    height: maxY - y,
+                    brightness: Math.max(a.brightness, b.brightness),
+                    confidence: Math.max(a.confidence, b.confidence)
+                };
+            }
+            
+            isValidPhoneShape(region) {
+                // Check dimensions
+                const widthOk = region.width >= this.PHONE_MIN_WIDTH && 
+                               region.width <= this.PHONE_MAX_WIDTH;
+                const heightOk = region.height >= this.PHONE_MIN_HEIGHT && 
+                                region.height <= this.PHONE_MAX_HEIGHT;
+                
+                if (!widthOk || !heightOk) return false;
+                
+                // Check aspect ratio (phones are taller than wide)
+                const aspectRatio = region.width / region.height;
+                const aspectOk = Math.abs(aspectRatio - this.PHONE_ASPECT_RATIO) <= this.ASPECT_TOLERANCE;
+                
+                // Check if it's reasonably rectangular
+                const area = region.width * region.height;
+                const expectedArea = (this.PHONE_MIN_WIDTH * this.PHONE_MIN_HEIGHT +
+                                    this.PHONE_MAX_WIDTH * this.PHONE_MAX_HEIGHT) / 2;
+                const sizeRatio = area / expectedArea;
+                const sizeOk = sizeRatio >= 0.3 && sizeRatio <= 3.0;
+                
+                return aspectOk && sizeOk;
+            }
+            
+            processValidPhones(phones) {
+                phones.forEach(phone => {
+                    this.drawPhoneBox(phone);
+                });
+                
+                // Count new detections
+                if (phones.length > this.detections.length) {
+                    const newPhones = phones.length - this.detections.length;
+                    this.phoneCount += newPhones;
+                    this.triggerPhoneAlert(phones[phones.length - 1]);
+                }
+                
+                this.detections = phones;
+                this.updateStats();
+            }
+            
+            drawPhoneBox(phone) {
+                // Draw main box
+                this.ctx.strokeStyle = '#10b981';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(phone.x, phone.y, phone.width, phone.height);
+                
+                // Draw semi-transparent overlay
+                this.ctx.fillStyle = 'rgba(16, 185, 129, 0.1)';
+                this.ctx.fillRect(phone.x, phone.y, phone.width, phone.height);
+                
+                // Draw label
+                this.ctx.fillStyle = '#10b981';
+                this.ctx.font = 'bold 14px Arial';
+                this.ctx.fillText(
+                    `📱 PHONE ${phone.confidence}%`, 
+                    phone.x, 
+                    phone.y - 8
+                );
+                
+                // Draw dimensions
+                this.ctx.font = '12px Arial';
+                this.ctx.fillText(
+                    `${Math.round(phone.width)}×${Math.round(phone.height)}px`,
+                    phone.x,
+                    phone.y + phone.height + 15
+                );
+            }
+            
+            clearOverlay() {
+                this.ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
+            }
+            
+            triggerPhoneAlert(phone) {
+                const timestamp = new Date().toLocaleTimeString();
+                
+                this.addAlert(`
+                    📱 PHONE DETECTED!
+                    Position: (${Math.round(phone.x)}, ${Math.round(phone.y)})
+                    Size: ${Math.round(phone.width)}×${Math.round(phone.height)} pixels
+                    Aspect Ratio: ${(phone.width / phone.height).toFixed(2)}
+                    Confidence: ${phone.confidence}%
+                    Time: ${timestamp}
+                `, 'phone');
+                
+                // Visual feedback
+                document.body.style.boxShadow = 'inset 0 0 50px rgba(16, 185, 129, 0.3)';
+                setTimeout(() => {
+                    document.body.style.boxShadow = 'none';
+                }, 500);
+            }
+            
+            addAlert(message, type) {
+                const alertsDiv = document.getElementById('alerts');
+                
+                // Clear empty message if present
+                if (alertsDiv.children.length === 1 && 
+                    alertsDiv.children[0].textContent.includes('No phone detections')) {
+                    alertsDiv.innerHTML = '';
+                }
+                
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert-item`;
+                alertDiv.innerHTML = `<pre style="margin: 0; font-family: monospace;">${message}</pre>`;
+                
+                alertsDiv.insertBefore(alertDiv, alertsDiv.firstChild);
+                
+                // Keep last 10 alerts
+                while (alertsDiv.children.length > 10) {
+                    alertsDiv.removeChild(alertsDiv.lastChild);
+                }
+            }
+            
+            clearLogs() {
+                document.getElementById('alerts').innerHTML = `
+                    <div style="text-align: center; opacity: 0.7; padding: 30px;">
+                        <div style="font-size: 3em; margin-bottom: 15px;">📱</div>
+                        <p>Logs cleared. Show a phone to resume detection.</p>
+                    </div>
+                `;
+                this.phoneCount = 0;
+                this.falsePositives = 0;
+                this.detections = [];
+                this.updateStats();
+            }
+            
+            updateStats() {
+                document.getElementById('phoneCount').textContent = this.phoneCount;
+                document.getElementById('falsePos').textContent = this.falsePositives;
+                
+                // Calculate accuracy (simplified)
+                const totalAttempts = this.phoneCount + this.falsePositives;
+                const accuracy = totalAttempts > 0 ? Math.round((this.phoneCount / totalAttempts) * 100) : 100;
+                document.getElementById('accuracy').textContent = `${accuracy}%`;
+            }
+            
+            updateDebugInfo(candidates, validPhones, processingTime) {
+                document.getElementById('processing').textContent = `${Math.round(processingTime)}ms`;
+                
+                const debugInfo = `
+Detection Debug Info:
+├─ Frame candidates: ${candidates}
+├─ Valid phones: ${validPhones}
+├─ Brightness threshold: ${this.brightnessThreshold}
+├─ Processing time: ${Math.round(processingTime)}ms
+└─ Current detections: ${this.detections.length}
+                `;
+                
+                document.getElementById('debug').textContent = debugInfo;
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.phoneDetector = new PrecisePhoneDetector();
+            console.log('🎯 Precise Phone Detector Ready');
+        });
+    </script>
+</body>
+</html>

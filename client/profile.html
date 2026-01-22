@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>University Exam System - Profile</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+        }
+        
+        nav {
+            background-color: #34495e;
+            padding: 15px 0;
+            text-align: center;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover {
+            background-color: #2c3e50;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .profile-card {
+            display: flex;
+            align-items: center;
+            background-color: #ecf0f1;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .profile-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: #3498db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 4em;
+            margin-right: 30px;
+        }
+        
+        .profile-info {
+            flex: 1;
+        }
+        
+        .profile-info h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background-color: #3498db;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 200px;
+            margin: 10px;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 1.1em;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: #27ae60;
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #219653;
+        }
+        
+        .btn-edit {
+            background-color: #f39c12;
+        }
+        
+        .btn-edit:hover {
+            background-color: #e67e22;
+        }
+        
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>University Exam System</h1>
+        <p>Student Profile</p>
+    </header>
+    
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="exams.html">Exams</a>
+        <a href="results.html">Results</a>
+        <a href="profile.html">Profile</a>
+        <a href="contact.html">Contact</a>
+    </nav>
+    
+    <div class="container">
+        <div class="profile-card">
+            <div class="profile-image">JS</div>
+            <div class="profile-info">
+                <h2>John Student</h2>
+                <p><strong>Student ID:</strong> 2026001</p>
+                <p><strong>Email:</strong> john.student@university.edu</p>
+                <p><strong>Program:</strong> Computer Science</p>
+                <p><strong>Year:</strong> 3rd Year</p>
+                <p><strong>Status:</strong> <span style="color: #27ae60; font-weight: bold;">Active</span></p>
+                <a href="#" class="btn btn-edit">Edit Profile</a>
+                <a href="#" class="btn">Change Password</a>
+            </div>
+        </div>
+        
+        <h2>Academic Statistics</h2>
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Exams Taken</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">7.8</div>
+                <div class="stat-label">Avg. Score</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">6</div>
+                <div class="stat-label">Passed</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">2</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+        
+        <h2>Recent Activity</h2>
+        <p><strong>December 28, 2025:</strong> Completed "Advanced Algorithms" exam (Score: 82%)</p>
+        <p><strong>December 25, 2025:</strong> Submitted assignment for "Database Systems"</p>
+        <p><strong>December 20, 2025:</strong> Attended online lecture for "Software Engineering"</p>
+        
+        <div style="margin-top: 20px;">
+            <a href="exams.html" class="btn">Take Exams</a>
+            <a href="results.html" class="btn">View Results</a>
+        </div>
+    </div>
+    
+    <footer>
+        <p>University Exam System &copy; 2026 - All Rights Reserved</p>
+    </footer>
+</body>
+</html>

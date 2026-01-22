@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Detection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        video {
+            width: 100%;
+            max-width: 640px;
+            border: 3px solid #ff0000;
+            border-radius: 8px;
+            transform: scaleX(-1);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .alert {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .high { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .medium { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .low { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        #alerts {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .active { background-color: #d4edda; color: #155724; }
+        .inactive { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 SIMPLE CAMERA DETECTION TEST</h1>
+        <p>This will detect phones and show alerts immediately</p>
+        
+        <div id="status" class="status inactive">Camera OFF</div>
+        
+        <div>
+            <button id="startBtn">START CAMERA</button>
+            <button id="stopBtn" disabled>STOP CAMERA</button>
+        </div>
+        
+        <video id="video" autoplay playsinline muted style="display: none;"></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+        
+        <div id="alerts"></div>
+    </div>
+
+    <script>
+        class SimpleDetector {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.stream = null;
+                this.isRunning = false;
+                this.interval = null;
+                
+                this.setupEvents();
+            }
+            
+            setupEvents() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+            }
+            
+            async start() {
+                try {
+                    console.log('Starting camera...');
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 640, height: 480 },
+                        audio: false
+                    });
+                    
+                    this.stream = stream;
+                    this.video.srcObject = stream;
+                    this.video.style.display = 'block';
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
+                        this.setStatus('DETECTION ACTIVE - SHOW YOUR PHONE!', 'active');
+                        this.enableButtons(true);
+                        this.startDetection();
+                    };
+                    
+                } catch (error) {
+                    console.error('Camera error:', error);
+                    this.addAlert('Camera Error: ' + error.message, 'high');
+                }
+            }
+            
+            stop() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
+                this.video.style.display = 'none';
+                this.stopDetection();
+                this.setStatus('Camera STOPPED', 'inactive');
+                this.enableButtons(false);
+            }
+            
+            enableButtons(started) {
+                document.getElementById('startBtn').disabled = started;
+                document.getElementById('stopBtn').disabled = !started;
+            }
+            
+            setStatus(text, type) {
+                const status = document.getElementById('status');
+                status.textContent = text;
+                status.className = `status ${type}`;
+            }
+            
+            startDetection() {
+                this.isRunning = true;
+                console.log('Detection started');
+                
+                this.interval = setInterval(() => {
+                    this.analyzeFrame();
+                }, 300); // Check every 300ms
+            }
+            
+            stopDetection() {
+                this.isRunning = false;
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+                console.log('Detection stopped');
+            }
+            
+            analyzeFrame() {
+                if (!this.video || this.video.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
+                    return;
+                }
+                
+                // Draw frame to canvas
+                this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                
+                // Analyze for bright pixels (phones/screens)
+                let brightCount = 0;
+                let totalCount = 0;
+                
+                // Sample every 5th pixel for speed
+                for (let i = 0; i < data.length; i += 4 * 5) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const brightness = (r + g + b) / 3;
+                    
+                    if (brightness > 150) { // Bright pixel threshold
+                        brightCount++;
+                    }
+                    totalCount++;
+                }
+                
+                const brightRatio = brightCount / totalCount;
+                console.log(`Bright pixels: ${(brightRatio * 100).toFixed(1)}%`);
+                
+                // Trigger alert if bright pixels detected
+                if (brightRatio > 0.02) { // 2% threshold
+                    const confidence = Math.min(99, Math.round(brightRatio * 4000));
+                    this.triggerAlert(
+                        `🚨 PHONE/SCREEN DETECTED! (${confidence}% confidence)`,
+                        'high'
+                    );
+                }
+            }
+            
+            triggerAlert(message, severity) {
+                console.log('ALERT TRIGGERED:', message);
+                this.addAlert(message, severity);
+            }
+            
+            addAlert(message, severity) {
+                const alertsDiv = document.getElementById('alerts');
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert ${severity}`;
+                alertDiv.innerHTML = `
+                    <strong>${new Date().toLocaleTimeString()} - ${message}</strong>
+                `;
+                
+                alertsDiv.insertBefore(alertDiv, alertsDiv.firstChild);
+                
+                // Keep only last 10 alerts
+                while (alertsDiv.children.length > 10) {
+                    alertsDiv.removeChild(alertsDiv.lastChild);
+                }
+                
+                // Flash the screen red briefly
+                document.body.style.backgroundColor = '#ffcccc';
+                setTimeout(() => {
+                    document.body.style.backgroundColor = '#f0f0f0';
+                }, 200);
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.detector = new SimpleDetector();
+        });
+    </script>
+</body>
+</html>

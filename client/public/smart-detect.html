@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Object Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .video-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+        video {
+            width: 640px;
+            height: 480px;
+            border: 3px solid #00ff00;
+            border-radius: 8px;
+            transform: scaleX(-1);
+            background: black;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 640px;
+            height: 480px;
+            pointer-events: none;
+        }
+        button {
+            background: linear-gradient(45deg, #0066ff, #00ccff);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,102,255,0.4);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .alert-panel {
+            background: #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .alert-item {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border-left: 4px solid #ff0000;
+            background: rgba(255,0,0,0.1);
+            animation: pulse 0.5s;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .detection-box {
+            position: absolute;
+            border: 3px solid #ff0000;
+            background: rgba(255,0,0,0.2);
+            pointer-events: none;
+        }
+        .box-label {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #ff0000;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background: #444;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 SMART OBJECT DETECTION</h1>
+        <p>Detects phones and highlights them with bounding boxes</p>
+        
+        <div class="video-container">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
+        </div>
+        
+        <div>
+            <button id="startBtn">START DETECTION</button>
+            <button id="stopBtn" disabled>STOP</button>
+            <button id="clearBtn">CLEAR ALERTS</button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="phoneCount">0</div>
+                <div class="stat-label">Phones Detected</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="confidence">0%</div>
+                <div class="stat-label">Avg Confidence</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="fps">0</div>
+                <div class="stat-label">FPS</div>
+            </div>
+        </div>
+        
+        <div class="alert-panel" id="alerts">
+            <div style="text-align: center; color: #666; padding: 20px;">
+                No detections yet. Show a phone to the camera.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SmartDetector {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.overlay = document.getElementById('overlay');
+                this.ctx = this.overlay.getContext('2d');
+                this.stream = null;
+                this.isRunning = false;
+                this.interval = null;
+                this.phoneCount = 0;
+                this.detections = [];
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                this.setupEvents();
+            }
+            
+            setupEvents() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearAlerts());
+            }
+            
+            async start() {
+                try {
+                    console.log('🚀 Starting smart detection...');
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            width: { ideal: 1280 }, 
+                            height: { ideal: 720 },
+                            facingMode: 'user'
+                        },
+                        audio: false
+                    });
+                    
+                    this.stream = stream;
+                    this.video.srcObject = stream;
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.overlay.width = this.video.videoWidth;
+                        this.overlay.height = this.video.videoHeight;
+                        this.enableButtons(true);
+                        this.startDetection();
+                    };
+                    
+                } catch (error) {
+                    console.error('Camera error:', error);
+                    this.addAlert(`Camera Error: ${error.message}`, 'error');
+                }
+            }
+            
+            stop() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
+                this.stopDetection();
+                this.enableButtons(false);
+            }
+            
+            enableButtons(started) {
+                document.getElementById('startBtn').disabled = started;
+                document.getElementById('stopBtn').disabled = !started;
+            }
+            
+            startDetection() {
+                this.isRunning = true;
+                console.log('🔍 Smart detection active');
+                
+                this.interval = setInterval(() => {
+                    this.analyzeFrame();
+                    this.updateStats();
+                }, 200); // Analyze every 200ms
+            }
+            
+            stopDetection() {
+                this.isRunning = false;
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+                this.clearOverlay();
+                console.log('⏹️ Detection stopped');
+            }
+            
+            analyzeFrame() {
+                if (!this.video || this.video.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
+                    return;
+                }
+                
+                // Clear previous drawings
+                this.clearOverlay();
+                
+                // Get frame data
+                this.ctx.drawImage(this.video, 0, 0, this.overlay.width, this.overlay.height);
+                const imageData = this.ctx.getImageData(0, 0, this.overlay.width, this.overlay.height);
+                const data = imageData.data;
+                
+                // Find bright regions (potential phones/screens)
+                const brightRegions = this.findBrightRegions(data);
+                
+                // Process detections
+                if (brightRegions.length > 0) {
+                    this.processDetections(brightRegions);
+                }
+            }
+            
+            findBrightRegions(data) {
+                const regions = [];
+                const width = this.overlay.width;
+                const height = this.overlay.height;
+                const threshold = 180; // Brightness threshold
+                
+                // Scan frame in blocks
+                const blockSize = 30;
+                
+                for (let y = 0; y < height; y += blockSize) {
+                    for (let x = 0; x < width; x += blockSize) {
+                        let brightPixels = 0;
+                        let totalPixels = 0;
+                        
+                        // Check pixels in this block
+                        for (let dy = 0; dy < blockSize && y + dy < height; dy++) {
+                            for (let dx = 0; dx < blockSize && x + dx < width; dx++) {
+                                const index = ((y + dy) * width + (x + dx)) * 4;
+                                const r = data[index];
+                                const g = data[index + 1];
+                                const b = data[index + 2];
+                                const brightness = (r + g + b) / 3;
+                                
+                                if (brightness > threshold) {
+                                    brightPixels++;
+                                }
+                                totalPixels++;
+                            }
+                        }
+                        
+                        // If block has enough bright pixels, record it
+                        if (brightPixels / totalPixels > 0.4) { // 40% bright pixels
+                            regions.push({
+                                x: x,
+                                y: y,
+                                width: Math.min(blockSize, width - x),
+                                height: Math.min(blockSize, height - y),
+                                confidence: Math.round((brightPixels / totalPixels) * 100)
+                            });
+                        }
+                    }
+                }
+                
+                return regions;
+            }
+            
+            processDetections(regions) {
+                // Merge nearby regions
+                const merged = this.mergeNearbyRegions(regions);
+                
+                // Draw bounding boxes
+                merged.forEach(region => {
+                    this.drawBoundingBox(region);
+                });
+                
+                // Trigger alerts for significant detections
+                merged.forEach(region => {
+                    if (region.confidence > 70 && region.width > 20 && region.height > 20) {
+                        this.triggerAlert(region);
+                    }
+                });
+                
+                this.detections = merged;
+            }
+            
+            mergeNearbyRegions(regions) {
+                const merged = [];
+                const processed = new Set();
+                
+                for (let i = 0; i < regions.length; i++) {
+                    if (processed.has(i)) continue;
+                    
+                    let current = {...regions[i]};
+                    processed.add(i);
+                    
+                    // Find overlapping regions
+                    for (let j = i + 1; j < regions.length; j++) {
+                        if (processed.has(j)) continue;
+                        
+                        if (this.regionsOverlap(current, regions[j])) {
+                            current = this.mergeRegions(current, regions[j]);
+                            processed.add(j);
+                        }
+                    }
+                    
+                    merged.push(current);
+                }
+                
+                return merged;
+            }
+            
+            regionsOverlap(a, b) {
+                const overlapX = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+                const overlapY = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+                return overlapX > 5 && overlapY > 5;
+            }
+            
+            mergeRegions(a, b) {
+                const x = Math.min(a.x, b.x);
+                const y = Math.min(a.y, b.y);
+                const maxX = Math.max(a.x + a.width, b.x + b.width);
+                const maxY = Math.max(a.y + a.height, b.y + b.height);
+                
+                return {
+                    x: x,
+                    y: y,
+                    width: maxX - x,
+                    height: maxY - y,
+                    confidence: Math.max(a.confidence, b.confidence)
+                };
+            }
+            
+            drawBoundingBox(region) {
+                // Draw rectangle
+                this.ctx.strokeStyle = '#ff0000';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(region.x, region.y, region.width, region.height);
+                
+                // Draw semi-transparent overlay
+                this.ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                this.ctx.fillRect(region.x, region.y, region.width, region.height);
+                
+                // Draw label
+                this.ctx.fillStyle = '#ff0000';
+                this.ctx.font = 'bold 14px Arial';
+                this.ctx.fillText(
+                    `PHONE ${region.confidence}%`, 
+                    region.x, 
+                    region.y - 5
+                );
+            }
+            
+            clearOverlay() {
+                this.ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
+            }
+            
+            triggerAlert(region) {
+                this.phoneCount++;
+                const timestamp = new Date().toLocaleTimeString();
+                
+                this.addAlert(`
+                    🚨 PHONE DETECTED!
+                    Position: (${Math.round(region.x)}, ${Math.round(region.y)})
+                    Size: ${Math.round(region.width)}×${Math.round(region.height)}px
+                    Confidence: ${region.confidence}%
+                    Time: ${timestamp}
+                `, 'alert');
+                
+                // Visual feedback
+                document.body.style.backgroundColor = '#330000';
+                setTimeout(() => {
+                    document.body.style.backgroundColor = '#1a1a1a';
+                }, 300);
+            }
+            
+            addAlert(message, type) {
+                const alertsDiv = document.getElementById('alerts');
+                
+                // Clear empty message if present
+                if (alertsDiv.children.length === 1 && alertsDiv.children[0].textContent.includes('No detections')) {
+                    alertsDiv.innerHTML = '';
+                }
+                
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert-item`;
+                alertDiv.innerHTML = `<pre style="margin: 0; font-family: monospace;">${message}</pre>`;
+                
+                alertsDiv.insertBefore(alertDiv, alertsDiv.firstChild);
+                
+                // Keep last 15 alerts
+                while (alertsDiv.children.length > 15) {
+                    alertsDiv.removeChild(alertsDiv.lastChild);
+                }
+            }
+            
+            clearAlerts() {
+                document.getElementById('alerts').innerHTML = `
+                    <div style="text-align: center; color: #666; padding: 20px;">
+                        Alerts cleared. Show a phone to resume detection.
+                    </div>
+                `;
+                this.phoneCount = 0;
+                this.updateStats();
+            }
+            
+            updateStats() {
+                document.getElementById('phoneCount').textContent = this.phoneCount;
+                
+                if (this.detections.length > 0) {
+                    const avgConf = Math.round(
+                        this.detections.reduce((sum, d) => sum + d.confidence, 0) / this.detections.length
+                    );
+                    document.getElementById('confidence').textContent = `${avgConf}%`;
+                }
+                
+                // Update FPS
+                this.frameCount++;
+                const now = performance.now();
+                if (now - this.lastTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / (now - this.lastTime));
+                    document.getElementById('fps').textContent = fps;
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                }
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            window.detector = new SmartDetector();
+            console.log('🎯 Smart Detector Ready');
+        });
+    </script>
+</body>
+</html>
